@@ -166,7 +166,7 @@ jobs:
         context: ./client
         file: ./client/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-client:${{ github.sha }}
+        tags: ghcr.io/resi73/blog-chat-client:${{ github.sha }}
         labels: ${{ steps.meta.outputs.labels }}
 
   # Deploy to Staging
