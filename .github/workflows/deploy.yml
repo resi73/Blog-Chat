@@ -1,0 +1,128 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # Deploy to Vercel (Frontend)
+  deploy-frontend-vercel:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: client/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd client
+        npm install
+
+    - name: Build frontend
+      run: |
+        cd client
+        npm run build
+
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./client
+
+  # Deploy to Railway (Backend)
+  deploy-backend-railway:
+    name: Deploy Backend to Railway
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Railway
+      uses: bervProject/railway-deploy@v1.0.0
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: ${{ secrets.RAILWAY_SERVICE }}
+
+  # Deploy to Heroku
+  deploy-heroku:
+    name: Deploy to Heroku
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Heroku
+      uses: akhileshns/heroku-deploy@v3.12.14
+      with:
+        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+        heroku_email: ${{ secrets.HEROKU_EMAIL }}
+
+  # Deploy to DigitalOcean App Platform
+  deploy-digitalocean:
+    name: Deploy to DigitalOcean App Platform
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to DigitalOcean App Platform
+      uses: digitalocean/app_action@main
+      with:
+        app_name: ${{ secrets.DIGITALOCEAN_APP_NAME }}
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+  # Deploy to AWS ECS
+  deploy-aws-ecs:
+    name: Deploy to AWS ECS
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: blog-chat-app
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        service: blog-chat-service
+        cluster: blog-chat-cluster
+        wait-for-service-stability: true 
