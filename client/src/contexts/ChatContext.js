@@ -97,7 +97,7 @@ export const ChatProvider = ({ children }) => {
         setIsConnected(false);
       }
     }
-  }, [isAuthenticated, user?.id]); // Chỉ phụ thuộc vào user.id thay vì toàn bộ user object
+  }, [isAuthenticated, user]); // Sửa lại dependency array để đúng chuẩn hooks
 
   const joinRoom = useCallback((roomId) => {
     if (socket && isConnected) {
